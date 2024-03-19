@@ -71,7 +71,7 @@ public class Byte : CogsAgent
         discreteActionsOut[3] = 0; //....................3
 
         //TODO-2: Uncomment this next line when implementing GoBackToBase();
-        //discreteActionsOut[4] = 0;
+        discreteActionsOut[4] = 0;
 
        
         if (Input.GetKey(KeyCode.UpArrow))
@@ -89,6 +89,7 @@ public class Byte : CogsAgent
         if (Input.GetKey(KeyCode.LeftArrow))
         {
             //TODO-1: Using the above as examples, set the action out for the left arrow press
+            discreteActionsOut[1] = 2;
             
         }
         
@@ -104,8 +105,10 @@ public class Byte : CogsAgent
         }
 
 
-        //TODO-2: implement a keypress (your choice of key) for the output for GoBackToBase();
-
+        //TODO-2: S for the output for GoBackToBase();
+        if (Input.GetKey(KeyCode.S)){
+            discreteActionsOut[4] = 1;
+        }
     }
 
         // What to do when an action is received (i.e. when the Brain gives the agent information about possible actions)
@@ -116,16 +119,18 @@ public class Byte : CogsAgent
         int forwardAxis = (int)actions.DiscreteActions[0]; //NN output 0
 
         //TODO-1: Set these variables to their appopriate item from the act list
-        int rotateAxis = 0; 
-        int shootAxis = 0; 
-        int goToTargetAxis = 0;
+        int rotateAxis = (int)actions.DiscreteActions[1]; //NN output 1
+        int shootAxis = (int)actions.DiscreteActions[2]; //NN output 2
+        int goToTargetAxis = (int)actions.DiscreteActions[3]; //NN output 3
+
+        
         
         //TODO-2: Uncomment this next line and set it to the appropriate item from the act list
-        //int goToBaseAxis;
+        int goToBaseAxis = (int)actions.DiscreteActions[4]; //NN output 4
 
         //TODO-2: Make sure to remember to add goToBaseAxis when working on that part!
         
-        MovePlayer(forwardAxis, rotateAxis, shootAxis, goToTargetAxis);
+        MovePlayer(forwardAxis, rotateAxis, shootAxis, goToTargetAxis, goToBaseAxis);
 
         
 
@@ -176,7 +181,7 @@ public class Byte : CogsAgent
         rewardDict.Add("dropped-targets", 0f);
     }
     
-    private void MovePlayer(int forwardAxis, int rotateAxis, int shootAxis, int goToTargetAxis)
+    private void MovePlayer(int forwardAxis, int rotateAxis, int shootAxis, int goToTargetAxis, int goToBase)
     //TODO-2: Add goToBase as an argument to this function ^
     {
         dirToGo = Vector3.zero;
@@ -199,6 +204,8 @@ public class Byte : CogsAgent
         }
         else if (forwardAxis == 2){
             //TODO-1: Tell your agent to go backward!
+            dirToGo = backward;
+
             
         }
 
@@ -211,7 +218,14 @@ public class Byte : CogsAgent
         }
         
         //TODO-1 : Implement the other cases for rotateDir
+        else if (rotateAxis == 1){
+            rotateDir = right;
+        }
+        else if (rotateAxis == 2){
+            rotateDir = left;
 
+            
+        }
 
         //shoot
         if (shootAxis == 1){
@@ -227,7 +241,9 @@ public class Byte : CogsAgent
         }
 
         //TODO-2: Implement the case for goToBaseAxis
-        
+        if (goToBase == 1) {
+            GoToBase();
+        }
         
     }
 
