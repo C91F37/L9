@@ -31,7 +31,7 @@ public class Byte : CogsAgent
     protected override void Start()
     {
         base.Start();
-        rBody = GetComponent<Rigidbody>;
+        rBody = GetComponent<Rigidbody>();
         gameTimer = timer.GetComponent<Timer>();
         baseTransform = baseLocation;
         startingPosition = transform.localPosition;
@@ -53,7 +53,7 @@ public class Byte : CogsAgent
 
         OptimalSpeedRewards();
         
-        LaserControl();
+        EnhancedLaserControl();
         // Movement based on DirToGo and RotateDir
         moveAgent(dirToGo, rotateDir);
     }
@@ -63,7 +63,7 @@ public class Byte : CogsAgent
 
     private void OptimalSpeedRewards()
     {
-        float optimalSpeed = maxMoveSpeed - (0.05f * carriedTargets.Count);
+        float optimalSpeed = 1.5f - (0.05f * carriedTargets.Count);
         float currentSpeed = rBody.velocity.magnitude;
         float efficiency = currentSpeed / optimalSpeed;
         if (efficiency >= OPTIMAL_SPEED_RATIO)
@@ -81,7 +81,7 @@ public class Byte : CogsAgent
         AddReward(CARRYING_PENALTY_MULTIPLIER * carriedTargets.Count);
     }
 
-    protected override bool LaserControl()
+    protected bool EnhancedLaserControl()
     {
         //call base to maintain original behaviour
         bool baseResult = base.LaserControl();
@@ -95,7 +95,7 @@ public class Byte : CogsAgent
 
         if (IsLaserOn() && !IsFrozen())
         {   
-            Raycast hit;
+            RaycastHit hit;
             Vector3 rayDir = 20f * transform.forward;
             if (Physics.SphereCast(transform.position, 0.25f, rayDir, out hit, 
                 20f, LayerMask.GetMask("Default"), QueryTriggerInteraction.Ignore))
