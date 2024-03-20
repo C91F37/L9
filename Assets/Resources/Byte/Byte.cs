@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.MLAgents;
@@ -7,12 +7,24 @@ using Unity.MLAgents.Actuators;
 
 public class Byte : CogsAgent
 {
+    // Cache to speed up
+    private Rigidbody rBody;
+    private Timer gameTimer;
+    private Transform baseTransform;
+    private Vector3 startingPosition;
+    private List<GameObject> allTargets = new List<GameObject>();
+
+
     // ------------------BASIC MONOBEHAVIOR FUNCTIONS-------------------
     
     // Initialize values
     protected override void Start()
     {
         base.Start();
+        rBody = GetComponent<Rigidbody>;
+        gameTimer = timer.GetComponent<Timer>();
+        baseTransform = baseLocation;
+        startingPosition = transform.localPosition;
         AssignBasicRewards();
     }
 
@@ -34,25 +46,28 @@ public class Byte : CogsAgent
     public override void CollectObservations(VectorSensor sensor)
     {
         // Agent velocity in x and z axis 
-        var localVelocity = transform.InverseTransformDirection(rBody.velocity);
+        Vector3 localVelocity = transform.InverseTransformDirection(rBody.velocity);
         sensor.AddObservation(localVelocity.x);
         sensor.AddObservation(localVelocity.z);
 
         // Time remaning
-        sensor.AddObservation(timer.GetComponent<Timer>().GetTimeRemaning());  
+        sensor.AddObservation(gameTimer.GetTimeRemaning());  
 
         // Agent's current rotation
-        var localRotation = transform.rotation;
-        sensor.AddObservation(transform.rotation.y);
+        // var localRotation = transform.rotation;
+        // sensor.AddObservation(transform.rotation.y);
+        sensor.AddObservation(transform.localEulerAngles.y);
 
         // Agent and home base's position
-        sensor.AddObservation(this.transform.localPosition);
-        sensor.AddObservation(baseLocation.localPosition);
+        sensor.AddObservation((baseTransform.localPosition - transform.localPosition).normalized);
+        sensor.AddObservation(Vector3.Distance(baseTransform.localPosition, transform.localPosition));
 
         // for each target in the environment, add: its position, whether it is being carried,
         // and whether it is in a base
-        foreach (GameObject target in targets){
-            sensor.AddObservation(target.transform.localPosition);
+        foreach (GameObject target in allTargets){
+            Vector3 relativePosition = target.transform.localPosition - transform.localPosition;
+            sensor.AddObservation(relativePosition.normalized); // Direction to target
+            sensor.AddObservation(relativePosition.magnitude); // Distance to target
             sensor.AddObservation(target.GetComponent<Target>().GetCarried());
             sensor.AddObservation(target.GetComponent<Target>().GetInBase());
         }
