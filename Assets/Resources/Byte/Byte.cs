@@ -14,6 +14,16 @@ public class Byte : CogsAgent
     private Vector3 startingPosition;
     private List<GameObject> allTargets = new List<GameObject>();
 
+    private bool wasFrozenLastFrame;
+
+    private const float REWARD_LASER_HIT = 0.5f;
+    private const float PENALTY_LASER_MISS = -0.05f;
+    private const float PENALTY_LASER_USE = -0.02f;
+    private const float REWARD_FOR_TARGET_PICKUP = 0.2f;
+    private const float PENALTY_FOR_BEING_FROZEN = -0.5f;
+    private const float SPEED_REWARD_MULTIPLIER = 0.01f;
+    private const float CARRYING_PENALTY_MULTIPLIER = -0.02f;
+    private const float OPTIMAL_SPEED_RATIO = 0.8f; 
 
     // ------------------BASIC MONOBEHAVIOR FUNCTIONS-------------------
     
@@ -25,6 +35,7 @@ public class Byte : CogsAgent
         gameTimer = timer.GetComponent<Timer>();
         baseTransform = baseLocation;
         startingPosition = transform.localPosition;
+        wasFrozenLastFrame = IsFrozen();
         AssignBasicRewards();
     }
 
@@ -33,14 +44,76 @@ public class Byte : CogsAgent
     protected override void FixedUpdate() {
         base.FixedUpdate();
         
+        //check for transition from not frozen -> frozen
+        if (!wasFrozenLastFrame && IsFrozen())
+        {
+            AddReward(PENALTY_FOR_BEING_FROZEN);
+        }
+        wasFrozenLastFrame = IsFrozen();
+
+        OptimalSpeedRewards();
+        
         LaserControl();
         // Movement based on DirToGo and RotateDir
         moveAgent(dirToGo, rotateDir);
     }
-
-
     
     // --------------------AGENT FUNCTIONS-------------------------
+
+
+    private void OptimalSpeedRewards()
+    {
+        float optimalSpeed = maxMoveSpeed - (0.05f * carriedTargets.Count);
+        float currentSpeed = rBody.velocity.magnitude;
+        float efficiency = currentSpeed / optimalSpeed;
+        if (efficiency >= OPTIMAL_SPEED_RATIO)
+        {
+            // reward speeding
+            AddReward(SPEED_REWARD_MULTIPLIER * (1 - efficiency));
+        }
+        else 
+        {   
+            // penalize moving too slow
+            AddReward(CARRYING_PENALTY_MULTIPLIER * (1 - efficiency));
+        }
+
+        // penalize carry
+        AddReward(CARRYING_PENALTY_MULTIPLIER * carriedTargets.Count);
+    }
+
+    protected override bool LaserControl()
+    {
+        //call base to maintain original behaviour
+        bool baseResult = base.LaserControl();
+        if (baseResult) 
+        {
+            AddReward(PENALTY_LASER_USE);
+        }
+
+        //custom logic for Byte
+        bool laserHit = false;
+
+        if (IsLaserOn() && !IsFrozen())
+        {   
+            Raycast hit;
+            Vector3 rayDir = 20f * transform.forward;
+            if (Physics.SphereCast(transform.position, 0.25f, rayDir, out hit, 
+                20f, LayerMask.GetMask("Default"), QueryTriggerInteraction.Ignore))
+                {
+                    if (hit.collider.gameObject.CompareTag("Player"))
+                    {
+                        laserHit = true;
+                        AddReward(REWARD_LASER_HIT);
+                    }
+                }
+            if (!laserHit)
+            {
+                AddReward(PENALTY_LASER_MISS);
+            }
+        }
+
+        return baseResult;
+    }
 
     // Get relevant information from the environment to effectively learn behavior
     public override void CollectObservations(VectorSensor sensor)
@@ -119,7 +192,6 @@ public class Byte : CogsAgent
             discreteActionsOut[3] = 1;
         }
 
-
         //TODO-2: S for the output for GoBackToBase();
         if (Input.GetKey(KeyCode.S)){
             discreteActionsOut[4] = 1;
@@ -128,8 +200,6 @@ public class Byte : CogsAgent
 
         // What to do when an action is received (i.e. when the Brain gives the agent information about possible actions)
         public override void OnActionReceived(ActionBuffers actions){
-
-        
 
         int forwardAxis = (int)actions.DiscreteActions[0]; //NN output 0
 
@@ -147,8 +217,6 @@ public class Byte : CogsAgent
         
         MovePlayer(forwardAxis, rotateAxis, shootAxis, goToTargetAxis, goToBaseAxis);
 
-        
-
     }
 
 
@@ -156,30 +224,45 @@ public class Byte : CogsAgent
     // Called when object collides with or trigger (similar to collide but without physics) other objects
     protected override void OnTriggerEnter(Collider collision)
     {
-        
-
-        
-        if (collision.gameObject.CompareTag("HomeBase") && collision.gameObject.GetComponent<HomeBase>().team == GetTeam())
+        if (collision.gameObject.CompareTag("HomeBase") && 
+        collision.gameObject.GetComponent<HomeBase>().team == GetTeam())
         {
-            //Add rewards here
+            //base return reward, need adjustment
+            AddReward(1.0f);
+
+            //further reward based on targets acquired
+            int targetsDeposited = carriedTargets.Count;
+            if (targetsDeposited > 0)
+            {
+                AddReward(0.5f * targetsDeposited);
+                // Possibly called in Base.cs, no need to call it here.
+                // carriedTargets.Clear(); 
+            }
         }
         base.OnTriggerEnter(collision);
     }
 
     protected override void OnCollisionEnter(Collision collision) 
     {
-        
-
         //target is not in my base and is not being carried and I am not frozen
-        if (collision.gameObject.CompareTag("Target") && collision.gameObject.GetComponent<Target>().GetInBase() != GetTeam() && collision.gameObject.GetComponent<Target>().GetCarried() == 0 && !IsFrozen())
+        if (collision.gameObject.CompareTag("Target") && 
+            collision.gameObject.GetComponent<Target>().GetInBase() != GetTeam() && 
+            collision.gameObject.GetComponent<Target>().GetCarried() == 0 && !IsFrozen())
         {
             //Add rewards here
+            AddReward(REWARD_FOR_TARGET_PICKUP); 
         }
 
         if (collision.gameObject.CompareTag("Wall"))
         {
-            //Add rewards here
+            AddReward(-0.75f);
         }
+
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            AddReward(-0.2f);
+        }
+
         base.OnCollisionEnter(collision);
     }
 
@@ -238,8 +321,6 @@ public class Byte : CogsAgent
         }
         else if (rotateAxis == 2){
             rotateDir = left;
-
-            
         }
 
         //shoot
