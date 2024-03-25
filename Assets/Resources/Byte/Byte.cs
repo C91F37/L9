@@ -44,16 +44,18 @@ public class Byte : CogsAgent
     protected override void FixedUpdate() {
         base.FixedUpdate();
         
-        //check for transition from not frozen -> frozen
+        // //check for transition from not frozen -> frozen
         if (!wasFrozenLastFrame && IsFrozen())
         {
             AddReward(PENALTY_FOR_BEING_FROZEN);
         }
         wasFrozenLastFrame = IsFrozen();
 
-        OptimalSpeedRewards();
+        // OptimalSpeedRewards();
+        LaserControl();
+
+        // EnhancedLaserControl();
         
-        EnhancedLaserControl();
         // Movement based on DirToGo and RotateDir
         moveAgent(dirToGo, rotateDir);
     }
@@ -162,19 +164,19 @@ public class Byte : CogsAgent
         discreteActionsOut[4] = 0;
 
        
-        if (Input.GetKey(KeyCode.UpArrow))
+        if (Input.GetKey(KeyCode.I))
         {
             discreteActionsOut[0] = 1;
         }       
-        if (Input.GetKey(KeyCode.DownArrow))
+        if (Input.GetKey(KeyCode.K))
         {
             discreteActionsOut[0] = 2;
         }
-        if (Input.GetKey(KeyCode.RightArrow))
+        if (Input.GetKey(KeyCode.L))
         {
             discreteActionsOut[1] = 1;
         }
-        if (Input.GetKey(KeyCode.LeftArrow))
+        if (Input.GetKey(KeyCode.J))
         {
             //TODO-1: Using the above as examples, set the action out for the left arrow press
             discreteActionsOut[1] = 2;
@@ -224,26 +226,20 @@ public class Byte : CogsAgent
     // Called when object collides with or trigger (similar to collide but without physics) other objects
     protected override void OnTriggerEnter(Collider collision)
     {
+        base.OnTriggerEnter(collision);
+
         if (collision.gameObject.CompareTag("HomeBase") && 
         collision.gameObject.GetComponent<HomeBase>().team == GetTeam())
         {
             //base return reward, need adjustment
-            AddReward(1.0f);
-
-            //further reward based on targets acquired
-            int targetsDeposited = carriedTargets.Count;
-            if (targetsDeposited > 0)
-            {
-                AddReward(0.5f * targetsDeposited);
-                // Possibly called in Base.cs, no need to call it here.
-                // carriedTargets.Clear(); 
-            }
+            AddReward(0.8f + 1f * carriedTargets.Count);
         }
-        base.OnTriggerEnter(collision);
     }
 
     protected override void OnCollisionEnter(Collision collision) 
     {
+        base.OnCollisionEnter(collision);
+
         //target is not in my base and is not being carried and I am not frozen
         if (collision.gameObject.CompareTag("Target") && 
             collision.gameObject.GetComponent<Target>().GetInBase() != GetTeam() && 
@@ -263,7 +259,6 @@ public class Byte : CogsAgent
             AddReward(-0.2f);
         }
 
-        base.OnCollisionEnter(collision);
     }
 
 
