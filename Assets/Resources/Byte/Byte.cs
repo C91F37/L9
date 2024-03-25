@@ -14,7 +14,7 @@ using Unity.MLAgents.Actuators;
 // Previously, it also gives reward on moving above 80% optimal speed, but AI did not managed to learn it
 // hence, this feature is not included in the code below, but we nonetheless gives definition below. 
 
-// 
+// The code does not include any hard-coded instruction, so Byte is free to choose its strategy between collecting and laser.
 
 public class Byte : CogsAgent
 {
