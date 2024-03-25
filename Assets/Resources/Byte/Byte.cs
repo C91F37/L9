@@ -5,6 +5,17 @@ using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 
+// trained with reinforced learning (PPO) and GAIL, behaviour cloning on NVidia RTX 4090 CUDA version 12  
+// Strategy is simple. Byte focuses on object collection. 
+// Demo is simpler, it is a clip of pro gamer collecting balls. 
+// With each object collected, it rewards itself with a multiplier. 
+// It penalises collision with the player, and laser use/miss.
+// It significantly rewards laser hit, and penalises being frozen. 
+// Previously, it also gives reward on moving above 80% optimal speed, but AI did not managed to learn it
+// hence, this feature is not included in the code below, but we nonetheless gives definition below. 
+
+// 
+
 public class Byte : CogsAgent
 {
     // Cache to speed up
